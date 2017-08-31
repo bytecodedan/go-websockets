@@ -1,5 +1,5 @@
 # Websockets with Go!
-This is an example project showing us how to use WS (Websockets) with Go (golang). The WS takes a Twitter hastag and subscripts to live tweets. Tweets are sent back to the client for WS. At any point in time, you can subscribe to new tweets via new hashtag. The current stream will be closed and new one created.
+This is an example project showing us how to use WS (Websockets) with Go (golang). The WS takes a Twitter hastag and subscripts to live tweets. Tweets are sent back to the client through the WS. At any point in time, you can subscribe to new tweets via new hashtag. The current stream will be closed and new one created.
 
 ## Twitter API Keys and Token
 You'll need the following environment variables defined. 
