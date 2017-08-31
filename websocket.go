@@ -31,6 +31,10 @@ var HandleWSConnections = http.HandlerFunc(func(w http.ResponseWriter, r *http.R
 	go handleMessages(conn)
 })
 
+func initWebSocket() {
+	initTwitter()
+}
+
 func handleMessages(conn *websocket.Conn) {
 	go func() {
 		for {

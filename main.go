@@ -20,7 +20,7 @@ func main() {
 	address := flag.String("address", "localhost:8080", "host and port")
 	flag.Parse()
 
-	initTwitter()
+	initWebSocket()
 
 	mux := mux.NewRouter()
 	mux.Handle("/", http.FileServer(http.Dir("./public")))
