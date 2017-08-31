@@ -11,5 +11,5 @@ You'll need the following environment variables defined.
 
 If you don't have these Twitter credentials yet, simply create a developer account, create an app, and follow the instructions to have them generated. See [Twitter Developer Docs](https://dev.twitter.com/rest/public).
 
-### Thanks to ...
+## Thanks to ...
 [Francesc Campoy](https://github.com/campoy) and his [example](https://github.com/campoy/justforfunc/tree/master/14-twitterbot) of using the [Anaconda](https://github.com/ChimeraCoder/anaconda) client library for Twitter.
