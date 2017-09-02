@@ -1,9 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 
+	"github.com/ChimeraCoder/anaconda"
 	"github.com/gorilla/websocket"
 )
 
@@ -16,9 +16,7 @@ var upgrader = websocket.Upgrader{
 
 // Define our message object
 type wsEvent struct {
-	// Data interface{} `json:"data,omitempty"`
 	Data string `json:"data,omitempty"`
-	Type string `json:"type,omitempty"`
 }
 
 var HandleWSConnections = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -27,32 +25,67 @@ var HandleWSConnections = http.HandlerFunc(func(w http.ResponseWriter, r *http.R
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	go handleMessages(conn)
+	go handleConn(conn)
 })
 
-func initWebSocket() {
-	initTwitter()
+var twitter Twitter
+
+func InitWS() {
+	twitter = Twitter{}
+	twitter.Init()
 }
 
-func handleMessages(conn *websocket.Conn) {
+func handleConn(conn *websocket.Conn) {
+	// channel to be used by one Go routine to
+	// signal the other to stop processing and
+	// exit.
+	var exit = make(chan bool)
+
 	go func() {
 		for {
 			msg := wsEvent{}
 			err := conn.ReadJSON(&msg)
-			if err != nil {
-				fmt.Println("Error reading json.", err)
-			}
-			tweetReq <- msg.Data
-		}
-	}()
 
-	go func() {
-		for {
-			tweet := <-tweetRes
-			if err := conn.WriteJSON(tweet); err != nil {
-				fmt.Println(err)
+			if ce, ok := err.(*websocket.CloseError); ok {
+				switch ce.Code {
+				// check for client closed connections
+				case websocket.CloseNormalClosure,
+					websocket.CloseGoingAway,
+					websocket.CloseNoStatusReceived:
+					log.Info("Websocket closed by client.\n")
+					// stop current tweet stream
+					twitter.Stop()
+					// tell bottom Go routine to stop processing current
+					// tweet stream and exit.
+					exit <- true
+					return
+				}
 			}
+
+			if ok := twitter.SetupStream(msg.Data); !ok {
+				log.Error("Unexpected error creating tweet stream.")
+				return
+			}
+
+			go func() {
+				for {
+					select {
+					case v := <-twitter.Stream.C:
+						tweet, ok := v.(anaconda.Tweet)
+						if !ok {
+							log.Warningf("Received unexpected value type of %T\n", v)
+							return
+						}
+						log.Infof("%v\n", tweet.Text)
+						if err := conn.WriteJSON(tweet.Text); err != nil {
+							log.Error(err)
+							return
+						}
+					case <-exit:
+						return
+					}
+				}
+			}()
 		}
 	}()
 }

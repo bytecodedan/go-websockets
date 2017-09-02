@@ -5,15 +5,25 @@ import (
 	"os"
 
 	"github.com/ChimeraCoder/anaconda"
-	"github.com/sirupsen/logrus"
 )
 
 var (
+	// api       *anaconda.TwitterApi
+	// stream    *anaconda.Stream
+	// tweetReq  chan string
+	// tweetRes  chan string
+	// tweetStop chan bool
+	// Twitter API credentials
 	consumerKey       = getenv("TWITTER_CONSUMER_KEY")
 	consumerSecret    = getenv("TWITTER_CONSUMER_SECRET")
 	accessToken       = getenv("TWITTER_ACCESS_TOKEN")
 	accessTokenSecret = getenv("TWITTER_ACCESS_TOKEN_SECRET")
 )
+
+type Twitter struct {
+	Api    *anaconda.TwitterApi
+	Stream *anaconda.Stream
+}
 
 func getenv(name string) string {
 	v := os.Getenv(name)
@@ -23,55 +33,25 @@ func getenv(name string) string {
 	return v
 }
 
-func (log *logger) Critical(args ...interface{})                 { log.Error(args...) }
-func (log *logger) Criticalf(format string, args ...interface{}) { log.Errorf(format, args...) }
-func (log *logger) Notice(args ...interface{})                   { log.Info(args...) }
-func (log *logger) Noticef(format string, args ...interface{})   { log.Infof(format, args...) }
-
-var (
-	api      *anaconda.TwitterApi
-	stream   *anaconda.Stream
-	tweetReq = make(chan string)
-	tweetRes = make(chan string)
-)
-
-func initTwitter() {
+func (t *Twitter) Init() {
 	anaconda.SetConsumerKey(consumerKey)
 	anaconda.SetConsumerSecret(consumerSecret)
-	api = anaconda.NewTwitterApi(accessToken, accessTokenSecret)
-
-	log = &logger{logrus.New()}
-	api.SetLogger(log)
-
-	go handleRequests()
+	t.Api = anaconda.NewTwitterApi(accessToken, accessTokenSecret)
+	t.Api.SetLogger(log)
 }
 
-func handleRequests() {
-	go func() {
-		for {
-			q := <-tweetReq
-			if stream != nil {
-				stream.Stop()
-			}
-			stream = api.PublicStreamFilter(url.Values{
-				"track": []string{q},
-			})
-			go handleStream()
-
-		}
-	}()
+func (t *Twitter) SetupStream(s string) bool {
+	if t.Stream != nil {
+		t.Stop()
+	}
+	t.Stream = t.Api.PublicStreamFilter(url.Values{
+		"track": []string{s},
+	})
+	return t.Stream != nil
 }
 
-func handleStream() {
-	defer stream.Stop()
-	// send stream of tweets to the response channel
-	for v := range stream.C {
-		t, ok := v.(anaconda.Tweet)
-		if !ok {
-			log.Warningf("Received unexpected value type of %T\n", v)
-			continue
-		}
-		log.Infof("%v\n", t.Text)
-		tweetRes <- t.Text
+func (t *Twitter) Stop() {
+	if t.Stream != nil {
+		t.Stream.Stop()
 	}
 }
